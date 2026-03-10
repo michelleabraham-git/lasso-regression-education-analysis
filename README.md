@@ -9,9 +9,8 @@ LASSO Regression Analysis
 This project explores the determinants of student–teacher ratios in Indian primary schools using LASSO regression.
 
 Methods used:
-• LASSO regression
-• Cross-validation
-• Comparison with OLS
+LASSO regression
+Comparison with OLS
 
 Tools:
 R
