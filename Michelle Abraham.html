@@ -1,0 +1,2370 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Michelle_Abraham">
+
+<title>LASSO_Final Project</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="Michelle_LASSO_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Michelle_LASSO_files/libs/quarto-html/quarto.js"></script>
+<script src="Michelle_LASSO_files/libs/quarto-html/popper.min.js"></script>
+<script src="Michelle_LASSO_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Michelle_LASSO_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Michelle_LASSO_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Michelle_LASSO_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Michelle_LASSO_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Michelle_LASSO_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Michelle_LASSO_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">LASSO_Final Project</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Michelle_Abraham </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p><strong>LASSO</strong></p>
+<p>Least Absolute Shrinkage and Selection Operator is a regression method that predicts an outcome and picks out variables that really matter. With a regular OLS regression you end up keeping every variable in model even if many of them are not important or contribute very little. LASSO however adds a penalty. This penalty forces the model to shrink the coefficients of less useful variables, if the penalty is tough enough it can push some coefficients down to zero, kicking out those variables from the model. LASSO is useful when you have many predictors and want a model that is cleaner and easier to understand with only the important variables.</p>
+<p>LASSO is useful mainly for:</p>
+<ol type="1">
+<li>Variable selection : It identifies which predictors genuinely matter. It gives a model easier to interpret by removing unnecessary variables.</li>
+<li>Handle high dimensional data: LASSO works when the number of variables is large or even if they are highly correlated. OLS becomes unstable in such cases but LASSO works here and prevents over fitting.</li>
+<li>Prediction accuracy: By keeping only relevant variables the model avoids noise and learns a pattern that generalizes better to new data.</li>
+</ol>
+<p>Example: Imagine you want to understand what affects students’ exam scores.<br>
+You collect 50 different variables: study hours, sleep, tuition, attendance, stress levels, screen time, diet quality, parental education, internet speed, and many more.</p>
+<p>If you run a normal OLS regression, the model uses all 50 variables even if only 4 or 5 actually matter. This makes the model complicated, noisy, and difficult to interpret.</p>
+<p>Now if we add a rule: “Every extra variable you keep in the model costs you a small penalty.” This is what LASSO does, Because of that penalty, the model now prefers to keep only the variables that provide strong predictive power. Variables that contribute very little get shrunk toward zero, and many coefficients become exactly zero. This is gives a much cleaner model.</p>
+<p>But how does LASSO know which are the variables that really matter? LASSO identifies important variables by combining prediction accuracy with a penalty that grows with the absolute size of coefficients unlike OLS, which only minimizes prediction error, LASSO minimizes “prediction error + lambda (penalty level) × (sum of absolute coefficients)”, meaning every additional variable carries a cost. If a variable is weak, because it adds noise, overlaps with other predictors, or barely relates to the outcome its contribution to prediction is too small to justify the penalty, so LASSO shrinks its coefficient to zero and effectively removes it. Strong variables survive because shrinking them would noticeably worsen prediction, making it worthwhile to pay the penalty and keep them in the model. Behind the scenes, glmnet tests many penalty levels, from very high ones that keep almost nothing to low ones that resemble OLS, and cross-validation (the n folds) chooses the lambda that predicts best on unseen data.</p>
+<p>Lambda (λ) is the penalty strength in LASSO, it controls how harshly the model punishes large coefficients. When λ is small (close to zero), the penalty is weak, and LASSO behaves almost like ordinary OLS, keeping most variables. When λ becomes large, the penalty becomes strong, and LASSO aggressively shrinks many coefficients toward zero, eliminating weaker variables entirely. During cross-validation, glmnet tries many λ values and chooses the one that gives the best prediction accuracy on unseen data.</p>
+<p>Alpha (α) controls what type of regularization the model applies. When α = 1, the model becomes pure LASSO, which performs variable selection by shrinking some coefficients all the way to zero. When α = 0, the model becomes Ridge regression, which shrinks coefficients but never drops variables. Values between 0 and 1 give Elastic Net, a mix of both methods. Alpha decides how aggresively the model will drop variables. Since we want to see which variables truly matter at the state level, α = 1 is used so that LASSO can select a smaller, more interpretable set of predictors.</p>
+<p>n-fold cross-validation is the method LASSO uses to choose the best penalty strength. The idea is to divide the data into n equal parts, train the model on (n-1) of them, and test it on the remaining part. This process repeats n times so that every part gets used once for testing. The model then picks the lamda value that performs best on average across all folds. Using nfolds prevents overfitting and ensures that the chosen lamda works well on unseen data. I have used nfolds = 10 meaning the model is evaluated 10 times on different splits, which is a standard and reliable choice in machine learning.</p>
+<p>The below table shows the variables chosen by LASSO with the alpha 1, nfolds 10 and the lambda value that gives the minimum cross validation error. So here the LASSO penalty parameter - lamda was not chosen manually, instead I used 10 fold cross validation to automatically select the lamda that minimises the prediction error. The value returned by lambda.min was then used to fit the final LASSO model. This is done so that the amount of shrinkage is data driven and improves prediction accuracy.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="aliezsmdem" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#aliezsmdem table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#aliezsmdem thead, #aliezsmdem tbody, #aliezsmdem tfoot, #aliezsmdem tr, #aliezsmdem td, #aliezsmdem th {
+  border-style: none;
+}
+
+#aliezsmdem p {
+  margin: 0;
+  padding: 0;
+}
+
+#aliezsmdem .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 22px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: hidden;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#aliezsmdem .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#aliezsmdem .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#aliezsmdem .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#aliezsmdem .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#aliezsmdem .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#aliezsmdem .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#aliezsmdem .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#aliezsmdem .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#aliezsmdem .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#aliezsmdem .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#aliezsmdem .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#aliezsmdem .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#aliezsmdem .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#aliezsmdem .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#aliezsmdem .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#aliezsmdem .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#aliezsmdem .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#aliezsmdem .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#aliezsmdem .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#aliezsmdem .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#aliezsmdem .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#aliezsmdem .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#aliezsmdem .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#aliezsmdem .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#aliezsmdem .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#aliezsmdem .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#aliezsmdem .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#aliezsmdem .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#aliezsmdem .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#aliezsmdem .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#aliezsmdem .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#aliezsmdem .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#aliezsmdem .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#aliezsmdem .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#aliezsmdem .gt_left {
+  text-align: left;
+}
+
+#aliezsmdem .gt_center {
+  text-align: center;
+}
+
+#aliezsmdem .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#aliezsmdem .gt_font_normal {
+  font-weight: normal;
+}
+
+#aliezsmdem .gt_font_bold {
+  font-weight: bold;
+}
+
+#aliezsmdem .gt_font_italic {
+  font-style: italic;
+}
+
+#aliezsmdem .gt_super {
+  font-size: 65%;
+}
+
+#aliezsmdem .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#aliezsmdem .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#aliezsmdem .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#aliezsmdem .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#aliezsmdem .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#aliezsmdem .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#aliezsmdem .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#aliezsmdem .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#aliezsmdem div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+<thead>
+<tr class="header gt_heading">
+<th colspan="2" class="gt_heading gt_title gt_font_normal" style="background-color: #4682B4; color: #FFFFFF; font-weight: bold"><strong>Variables Selected by LASSO Regression</strong></th>
+</tr>
+<tr class="odd gt_heading">
+<th colspan="2" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border" style="background-color: #4682B4; color: #FFFFFF; font-weight: bold">Non-zero coefficients under chosen penalty</th>
+</tr>
+<tr class="header gt_col_headings">
+<th id="variable" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">Variable</th>
+<th id="coefficient" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">Coefficient</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">health_centre</td>
+<td class="gt_row gt_right" headers="coefficient">2.8122</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">share_insurance_receiving</td>
+<td class="gt_row gt_right" headers="coefficient">-0.0161</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_icds_pregnant</td>
+<td class="gt_row gt_right" headers="coefficient">0.0038</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">share_below_6_immunized</td>
+<td class="gt_row gt_right" headers="coefficient">0.0054</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_underweight_newborn</td>
+<td class="gt_row gt_right" headers="coefficient">-0.0002</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">is_primary_school_with_electrici</td>
+<td class="gt_row gt_right" headers="coefficient">-1.7818</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">is_primary_school_have_drinking_</td>
+<td class="gt_row gt_right" headers="coefficient">-1.1110</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">is_primary_school_with_toilet</td>
+<td class="gt_row gt_right" headers="coefficient">4.2653</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">availability_of_middle_school</td>
+<td class="gt_row gt_right" headers="coefficient">4.7697</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">availability_of_high_school</td>
+<td class="gt_row gt_right" headers="coefficient">-0.6739</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">availability_of_govt_degree_coll</td>
+<td class="gt_row gt_right" headers="coefficient">-3.8805</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">share_grd_pg</td>
+<td class="gt_row gt_right" headers="coefficient">-0.2879</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">is_bank_available</td>
+<td class="gt_row gt_right" headers="coefficient">1.8365</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">no_electricity</td>
+<td class="gt_row gt_right" headers="coefficient">0.3112</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_hhd_piped</td>
+<td class="gt_row gt_right" headers="coefficient">0.0110</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">is_village_connected_to_all_weat</td>
+<td class="gt_row gt_right" headers="coefficient">-0.8921</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">is_broadband_available</td>
+<td class="gt_row gt_right" headers="coefficient">0.3720</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">share_farming_activity</td>
+<td class="gt_row gt_right" headers="coefficient">0.0341</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_hhd_ssh</td>
+<td class="gt_row gt_right" headers="coefficient">-0.0490</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">public_info_board</td>
+<td class="gt_row gt_right" headers="coefficient">-0.9491</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">ln_labour_budget_per_capita</td>
+<td class="gt_row gt_right" headers="coefficient">-0.1007</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p><strong>COMPARING THE LASSO MODEL WITH THE STATE LEVEL DISTRICT DUMMIES OLS MODEL</strong></p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="hhwduvjxbi" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#hhwduvjxbi table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#hhwduvjxbi thead, #hhwduvjxbi tbody, #hhwduvjxbi tfoot, #hhwduvjxbi tr, #hhwduvjxbi td, #hhwduvjxbi th {
+  border-style: none;
+}
+
+#hhwduvjxbi p {
+  margin: 0;
+  padding: 0;
+}
+
+#hhwduvjxbi .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 22px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: hidden;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#hhwduvjxbi .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#hhwduvjxbi .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#hhwduvjxbi .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#hhwduvjxbi .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#hhwduvjxbi .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hhwduvjxbi .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#hhwduvjxbi .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#hhwduvjxbi .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#hhwduvjxbi .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#hhwduvjxbi .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#hhwduvjxbi .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#hhwduvjxbi .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#hhwduvjxbi .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#hhwduvjxbi .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#hhwduvjxbi .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#hhwduvjxbi .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#hhwduvjxbi .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#hhwduvjxbi .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hhwduvjxbi .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#hhwduvjxbi .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#hhwduvjxbi .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#hhwduvjxbi .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hhwduvjxbi .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#hhwduvjxbi .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#hhwduvjxbi .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hhwduvjxbi .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hhwduvjxbi .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#hhwduvjxbi .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hhwduvjxbi .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#hhwduvjxbi .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hhwduvjxbi .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#hhwduvjxbi .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hhwduvjxbi .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#hhwduvjxbi .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hhwduvjxbi .gt_left {
+  text-align: left;
+}
+
+#hhwduvjxbi .gt_center {
+  text-align: center;
+}
+
+#hhwduvjxbi .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#hhwduvjxbi .gt_font_normal {
+  font-weight: normal;
+}
+
+#hhwduvjxbi .gt_font_bold {
+  font-weight: bold;
+}
+
+#hhwduvjxbi .gt_font_italic {
+  font-style: italic;
+}
+
+#hhwduvjxbi .gt_super {
+  font-size: 65%;
+}
+
+#hhwduvjxbi .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#hhwduvjxbi .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#hhwduvjxbi .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#hhwduvjxbi .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#hhwduvjxbi .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#hhwduvjxbi .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#hhwduvjxbi .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#hhwduvjxbi .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#hhwduvjxbi div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+<thead>
+<tr class="header gt_heading">
+<th colspan="5" class="gt_heading gt_title gt_font_normal" style="background-color: #4682B4; color: #FFFFFF; font-weight: bold"><strong>Comparison of State-level OLS vs.&nbsp;LASSO</strong></th>
+</tr>
+<tr class="odd gt_heading">
+<th colspan="5" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border" style="background-color: #4682B4; color: #FFFFFF; font-weight: bold">Which variables each method selects</th>
+</tr>
+<tr class="header gt_col_headings">
+<th id="variable" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">Variable</th>
+<th id="estimate" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">OLS Coefficient</th>
+<th id="coefficient" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">LASSO Coefficient</th>
+<th id="selected_by_ols" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">Selected by OLS?</th>
+<th id="selected_by_lasso" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">Selected by LASSO?</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">availability_of_middle_school</td>
+<td class="gt_row gt_right" headers="estimate">4.4563</td>
+<td class="gt_row gt_right" headers="coefficient">4.7697</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">health_centre</td>
+<td class="gt_row gt_right" headers="estimate">3.0136</td>
+<td class="gt_row gt_right" headers="coefficient">2.8122</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_grd_pg</td>
+<td class="gt_row gt_right" headers="estimate">-0.1575</td>
+<td class="gt_row gt_right" headers="coefficient">-0.2879</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">availability_of_govt_degree_coll</td>
+<td class="gt_row gt_right" headers="estimate">-3.3538</td>
+<td class="gt_row gt_right" headers="coefficient">-3.8805</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">ln_labour_budget_per_capita</td>
+<td class="gt_row gt_right" headers="estimate">-0.1249</td>
+<td class="gt_row gt_right" headers="coefficient">-0.1007</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">is_village_connected_to_all_weat</td>
+<td class="gt_row gt_right" headers="estimate">-1.2110</td>
+<td class="gt_row gt_right" headers="coefficient">-0.8921</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_insurance_receiving</td>
+<td class="gt_row gt_right" headers="estimate">-0.0094</td>
+<td class="gt_row gt_right" headers="coefficient">-0.0161</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">is_primary_school_with_toilet</td>
+<td class="gt_row gt_right" headers="estimate">4.1464</td>
+<td class="gt_row gt_right" headers="coefficient">4.2653</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_farming_activity</td>
+<td class="gt_row gt_right" headers="estimate">0.0159</td>
+<td class="gt_row gt_right" headers="coefficient">0.0341</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">share_hhd_piped</td>
+<td class="gt_row gt_right" headers="estimate">0.0244</td>
+<td class="gt_row gt_right" headers="coefficient">0.0110</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">is_bank_available</td>
+<td class="gt_row gt_right" headers="estimate">1.1230</td>
+<td class="gt_row gt_right" headers="coefficient">1.8365</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">is_broadband_available</td>
+<td class="gt_row gt_right" headers="estimate">0.7330</td>
+<td class="gt_row gt_right" headers="coefficient">0.3720</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_hhd_ssh</td>
+<td class="gt_row gt_right" headers="estimate">-0.0245</td>
+<td class="gt_row gt_right" headers="coefficient">-0.0490</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">is_primary_school_with_electrici</td>
+<td class="gt_row gt_right" headers="estimate">-1.3360</td>
+<td class="gt_row gt_right" headers="coefficient">-1.7818</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">is_primary_school_have_drinking_</td>
+<td class="gt_row gt_right" headers="estimate">-0.6286</td>
+<td class="gt_row gt_right" headers="coefficient">-1.1110</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">share_below_6_immunized</td>
+<td class="gt_row gt_right" headers="estimate">0.0024</td>
+<td class="gt_row gt_right" headers="coefficient">0.0054</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_underweight_newborn</td>
+<td class="gt_row gt_right" headers="estimate">-0.0021</td>
+<td class="gt_row gt_right" headers="coefficient">-0.0002</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">share_icds_pregnant</td>
+<td class="gt_row gt_right" headers="estimate">-0.0017</td>
+<td class="gt_row gt_right" headers="coefficient">0.0038</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">public_info_board</td>
+<td class="gt_row gt_right" headers="estimate">-0.0632</td>
+<td class="gt_row gt_right" headers="coefficient">-0.9491</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">no_electricity</td>
+<td class="gt_row gt_right" headers="estimate">-0.5608</td>
+<td class="gt_row gt_right" headers="coefficient">0.3112</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">availability_of_high_school</td>
+<td class="gt_row gt_right" headers="estimate">-0.0326</td>
+<td class="gt_row gt_right" headers="coefficient">-0.6739</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>The comparison table shows that the state level OLS and the LASSO model gave the same variables as the output. Even after applying an automatic variable selection method with a penalty LASSO did not shrink any coefficient to zero. This could suggest that OLS and LASSO agree on the direction and relevance of all variables. Every variable has a non zero coefficient, a non zero LASSO coefficient. This indicated that the predictors have a consistent, stable relationship with student teacher ration at the state level. No variable appears to be purely noise under the chosen penalty parameter. It could be that the LASSO penalty was not strong enough to force sparsity. However, we can see some heavier shrinkage in some variables than others, based on their predictive capacities and how correlated they are with other predictors. Public information board for instance moves coefficient from -0.0632 in OLS to -0.9491 in LASSO. Overall, this suggests that the determinants of student teacher ratio in primary school are multi-dimensional, spanning across middle school access, health access, infrastructure, connectivity, socio economic services, public services etc.</p>
+<p><strong>CHANGING THE PENALTY PARAMETER (LAMBDA)</strong></p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="yhcdjysbxh" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#yhcdjysbxh table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#yhcdjysbxh thead, #yhcdjysbxh tbody, #yhcdjysbxh tfoot, #yhcdjysbxh tr, #yhcdjysbxh td, #yhcdjysbxh th {
+  border-style: none;
+}
+
+#yhcdjysbxh p {
+  margin: 0;
+  padding: 0;
+}
+
+#yhcdjysbxh .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 22px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: hidden;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#yhcdjysbxh .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#yhcdjysbxh .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#yhcdjysbxh .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#yhcdjysbxh .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#yhcdjysbxh .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yhcdjysbxh .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#yhcdjysbxh .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#yhcdjysbxh .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#yhcdjysbxh .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#yhcdjysbxh .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#yhcdjysbxh .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#yhcdjysbxh .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#yhcdjysbxh .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#yhcdjysbxh .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#yhcdjysbxh .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#yhcdjysbxh .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#yhcdjysbxh .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#yhcdjysbxh .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yhcdjysbxh .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#yhcdjysbxh .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#yhcdjysbxh .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#yhcdjysbxh .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yhcdjysbxh .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#yhcdjysbxh .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#yhcdjysbxh .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yhcdjysbxh .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yhcdjysbxh .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#yhcdjysbxh .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yhcdjysbxh .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#yhcdjysbxh .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yhcdjysbxh .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#yhcdjysbxh .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yhcdjysbxh .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#yhcdjysbxh .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yhcdjysbxh .gt_left {
+  text-align: left;
+}
+
+#yhcdjysbxh .gt_center {
+  text-align: center;
+}
+
+#yhcdjysbxh .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#yhcdjysbxh .gt_font_normal {
+  font-weight: normal;
+}
+
+#yhcdjysbxh .gt_font_bold {
+  font-weight: bold;
+}
+
+#yhcdjysbxh .gt_font_italic {
+  font-style: italic;
+}
+
+#yhcdjysbxh .gt_super {
+  font-size: 65%;
+}
+
+#yhcdjysbxh .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#yhcdjysbxh .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#yhcdjysbxh .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#yhcdjysbxh .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#yhcdjysbxh .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#yhcdjysbxh .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#yhcdjysbxh .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#yhcdjysbxh .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#yhcdjysbxh div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+<thead>
+<tr class="header gt_heading">
+<th colspan="5" class="gt_heading gt_title gt_font_normal" style="background-color: #4682B4; color: #FFFFFF; font-weight: bold"><strong>Comparison: OLS vs.&nbsp;LASSO (α = 1, λ = 0.5)</strong></th>
+</tr>
+<tr class="odd gt_heading">
+<th colspan="5" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border" style="background-color: #4682B4; color: #FFFFFF; font-weight: bold">Effect of tuning parameters on variable selection</th>
+</tr>
+<tr class="header gt_col_headings">
+<th id="variable" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">Variable</th>
+<th id="estimate" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">OLS Coefficient</th>
+<th id="coefficient" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">LASSO Coefficient</th>
+<th id="selected_by_ols" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">Selected by OLS?</th>
+<th id="selected_by_lasso" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" style="font-weight: bold" scope="col">Selected by LASSO?</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">availability_of_middle_school</td>
+<td class="gt_row gt_right" headers="estimate">4.4563</td>
+<td class="gt_row gt_right" headers="coefficient">3.7840</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">health_centre</td>
+<td class="gt_row gt_right" headers="estimate">3.0136</td>
+<td class="gt_row gt_right" headers="coefficient">1.8185</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_grd_pg</td>
+<td class="gt_row gt_right" headers="estimate">-0.1575</td>
+<td class="gt_row gt_right" headers="coefficient">-0.2278</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">availability_of_govt_degree_coll</td>
+<td class="gt_row gt_right" headers="estimate">-3.3538</td>
+<td class="gt_row gt_right" headers="coefficient">-0.9944</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">ln_labour_budget_per_capita</td>
+<td class="gt_row gt_right" headers="estimate">-0.1249</td>
+<td class="gt_row gt_right" headers="coefficient">-0.0022</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">is_village_connected_to_all_weat</td>
+<td class="gt_row gt_right" headers="estimate">-1.2110</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_insurance_receiving</td>
+<td class="gt_row gt_right" headers="estimate">-0.0094</td>
+<td class="gt_row gt_right" headers="coefficient">-0.0060</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">is_primary_school_with_toilet</td>
+<td class="gt_row gt_right" headers="estimate">4.1464</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_farming_activity</td>
+<td class="gt_row gt_right" headers="estimate">0.0159</td>
+<td class="gt_row gt_right" headers="coefficient">0.0120</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">share_hhd_piped</td>
+<td class="gt_row gt_right" headers="estimate">0.0244</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">is_bank_available</td>
+<td class="gt_row gt_right" headers="estimate">1.1230</td>
+<td class="gt_row gt_right" headers="coefficient">0.3135</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">is_broadband_available</td>
+<td class="gt_row gt_right" headers="estimate">0.7330</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_hhd_ssh</td>
+<td class="gt_row gt_right" headers="estimate">-0.0245</td>
+<td class="gt_row gt_right" headers="coefficient">-0.0123</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">Yes</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">is_primary_school_with_electrici</td>
+<td class="gt_row gt_right" headers="estimate">-1.3360</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">is_primary_school_have_drinking_</td>
+<td class="gt_row gt_right" headers="estimate">-0.6286</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">share_below_6_immunized</td>
+<td class="gt_row gt_right" headers="estimate">0.0024</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">share_underweight_newborn</td>
+<td class="gt_row gt_right" headers="estimate">-0.0021</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">share_icds_pregnant</td>
+<td class="gt_row gt_right" headers="estimate">-0.0017</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">public_info_board</td>
+<td class="gt_row gt_right" headers="estimate">-0.0632</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="variable">no_electricity</td>
+<td class="gt_row gt_right" headers="estimate">-0.5608</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="variable">availability_of_high_school</td>
+<td class="gt_row gt_right" headers="estimate">-0.0326</td>
+<td class="gt_row gt_right" headers="coefficient">0.0000</td>
+<td class="gt_row gt_left" headers="selected_by_ols">Yes</td>
+<td class="gt_row gt_left" headers="selected_by_lasso">No</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>When the penalty parameter - lamda is increased to 0.5, LASSO becomes much more aggressive in shrinking coefficients towards zero. Unlike the earlier cross validated model where LASSO kept all the variables the higher penalty forces the model to become sparse, selecting only a subset of the predictors. The comparison table shows a dramatic difference between OLS and LASSO. With lamda is 0.5 the model becomes way more sensistive and eliminates variables that OLS considered significant. The set of variables that survived the penalty are:</p>
+<ul>
+<li><p><code>availability_of_middle_school</code></p></li>
+<li><p><code>health_centre</code></p></li>
+</ul>
+<!-- -->
+<ul>
+<li><code>share_grd_pg</code></li>
+</ul>
+<!-- -->
+<ul>
+<li><code>availability_of_govt_degree_coll</code></li>
+</ul>
+<!-- -->
+<ul>
+<li><code>ln_labour_budget_per_capita</code></li>
+</ul>
+<!-- -->
+<ul>
+<li><code>share_insurance_receiving</code></li>
+</ul>
+<!-- -->
+<ul>
+<li><code>share_farming_activity</code></li>
+</ul>
+<!-- -->
+<ul>
+<li><code>is_bank_available</code></li>
+</ul>
+<!-- -->
+<ul>
+<li><code>share_hhd_ssh</code></li>
+</ul>
+<p>These are the variables whose association with student–teacher ratio is strong enough that even a bigger penalty cannot shrink their coefficients to zero. These predictors likely carry the most consistent, independent predictive information. Even among the variables that survived selection, their coefficients become much smaller in magnitude compared to OLS. The shrinkage reflects LASSO’s general bias towards models that avoids overfiting.</p>
+<p>Many variables are eliminated not because they have no effect, but because:</p>
+<ul>
+<li><p>They are highly correlated with other predictors. Their effect is not strong enough to justify their inclusion under a large penalty. For example:</p></li>
+<li><p><code>is_primary_school_with_toilet</code></p></li>
+<li><p><code>is_village_connected_to_all_weat</code></p></li>
+<li><p><code>is_primary_school_with_electrici</code></p></li>
+</ul>
+<p>These infrastructure variables may be strongly correlated with each other, so LASSO keeps only the dominant ones and drops the rest.</p>
+<p>This comparison clearly shows:</p>
+<ul>
+<li><p>OLS keeps almost everything because it has no penalty</p></li>
+<li><p>LASSO with cross-validated λ keeps everything but shrinks them slightly</p></li>
+<li><p>LASSO with λ = 0.5 (strong penalty) forces a much simpler model</p></li>
+</ul>
+<p>Increasing lambda to 0.5 dramatically changed the variable selection. Under this stronger penalty, LASSO removed almost half of the predictors that OLS considered statistically significant. This happened because a higher lambda forces the model to keep only the strongest, most stable predictors, while shrinking correlated or weaker variables to zero. As a result, the lambda = 0.5 LASSO model is far sparser and more interpretable than both OLS and the cross-validated LASSO model. However, it may also lose information, as several dropped variables still had meaningful coefficients in OLS. This illustrates the core tradeoff in LASSO: simpler models versus possible loss of explanatory detail.</p>
+<p>The LASSO model differs substantially from the state-level OLS regression with district dummies that we estimated in the group project. In the OLS model, every variable entered the regression and almost all predictors appeared statistically significant, largely because OLS does not penalize model complexity. In contrast, LASSO introduces a penalty that forces the model to keep only the strongest and most stable predictors. Under the cross-validated lambda, LASSO retained all variables but shrank their coefficients noticeably, showing that many predictors carried weaker signals than OLS suggested. When the penalty was increased (lambda = 0.5), the contrast became even more striking: LASSO eliminated almost half the variables that OLS considered significant, setting their coefficients exactly to zero. Variables such as connectivity, broadband availability, school toilet facilities, piped water, electricity in primary schools, immunization and newborn health indicators, and several schooling infrastructure variables were removed entirely because their predictive contribution was either weak or redundant once other correlated variables were included. The variables that survived the higher penalty, such as availability of middle schools and degree colleges, health centres, share of graduates and postgraduates, farming activity, SHG participation, and insurance coverage, are those with the strongest independent association with student–teacher ratio. These differences show that while OLS highlights statistical significance, LASSO focuses on predictive strength, revealing which variables genuinely matter once the model is penalized for complexity.</p>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
